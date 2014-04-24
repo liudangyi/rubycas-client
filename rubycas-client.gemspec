@@ -28,7 +28,7 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency("json")
   gem.add_development_dependency("rspec")
   gem.add_development_dependency("appraisal")
-  gem.add_development_dependency("rails")
+  gem.add_development_dependency("rails", "~> 3.2.13")
   gem.add_development_dependency("simplecov")
   if defined?(JRUBY_VERSION)
     gem.add_development_dependency("activerecord-jdbcsqlite3-adapter")

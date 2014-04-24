@@ -9,31 +9,30 @@ module CASClient
         end
 
         def process_single_sign_out(st)
-
-          session_id, session = get_session_for_service_ticket(st)
-          if session
-            session.destroy
-            log.debug("Destroyed #{session.inspect} for session #{session_id.inspect} corresponding to service ticket #{st.inspect}.")
-          else
-            log.debug("Data for session #{session_id.inspect} was not found. It may have already been cleared by a local CAS logout request.")
-          end
+          session_id = read_service_session_lookup(st)
 
           if session_id
-            log.info("Single-sign-out for service ticket #{session_id.inspect} completed successfuly.")
+            log.info("Single-sign-out for service ticket #{session_id.inspect}.")
           else
             log.debug("No session id found for CAS ticket #{st}")
+            return
           end
-        end
 
-        def get_session_for_service_ticket(st)
-          session_id = read_service_session_lookup(st)
-          unless session_id.nil?
-            # This feels a bit hackish, but there isn't really a better way to go about it that I am aware of yet
+          case Rails.application.config.session_store.to_s
+          when "ActionDispatch::Session::CacheStore"
+            Rails.cache.delete("_session_id:#{session_id}")
+          when "ActionDispatch::Session::ActiveRecordStore"
             session = ActiveRecord::SessionStore.session_class.find(:first, :conditions => {:session_id => session_id})
+            if session
+              session.destroy
+              log.debug("Destroyed #{session.inspect} for session #{session_id.inspect} corresponding to service ticket #{st.inspect}.")
+            else
+              log.debug("Data for session #{session_id.inspect} was not found. It may have already been cleared by a local CAS logout request.")
+            end
           else
-            log.warn("Couldn't destroy session service ticket #{st} because no corresponding session id could be found.")
+            log.error "Can't process single sign out when using #{Rails.application.config.session_store}"
+            return
           end
-          [session_id, session]
         end
 
         def store_service_session_lookup(st, controller)
